@@ -1,2 +1,2 @@
 # nba_stats
-An advanced NBA stats and analysis
+An advanced NBA stats and analysis platform
