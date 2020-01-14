@@ -14,6 +14,15 @@ from nba_api.stats.endpoints import (
     TeamDashPtPass,
     TeamDashPtReb,
     PlayerCareerStats,
+    BoxScoreTraditionalV2,
+    BoxScoreFourFactorsV2,
+    BoxScoreAdvancedV2,
+    BoxScoreUsageV2,
+    BoxScorePlayerTrackV2,
+    BoxScoreScoringV2,
+    BoxScoreDefensive,
+    BoxScoreMatchups,
+    BoxScoreMiscV2,
 )
 
 DATA_DIR = Path(
@@ -201,9 +210,61 @@ class NBAPlayer:
     def team(self) -> NBATeam:
         return self._team
 
-    def get_careet_stats(self, season_list: List[str] = None) -> pd.DataFrame:
-        career = PlayerCareerStats(player_id=self.player_id).get_data_frames()[0]
+    def get_careet_stats(
+        self, season_list: List[str] = None, team_id_list: List[str] = None, **kwargs
+    ) -> pd.DataFrame:
+        career = PlayerCareerStats(
+            player_id=self.player_id, **kwargs
+        ).get_data_frames()[0]
         if season_list:
             career = career[career["SEASON_ID"].isin(season_list)]
 
+        if team_id_list:
+            career = career[career["TEAM_ID"].astype("str").isin(team_id_list)]
+
         return career
+
+
+class NBAGame:
+    def __init__(self, game_id):
+        self._game_id = game_id
+
+    @property
+    def game_id(self):
+        return self._game_id
+
+    def get_traditional_stats(self, **kwargs):
+        stats = BoxScoreTraditionalV2(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
+
+    def get_fourfactors_stats(self, **kwargs):
+        stats = BoxScoreFourFactorsV2(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
+
+    def get_advanced_stats(self, **kwargs):
+        stats = BoxScoreAdvancedV2(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
+
+    def get_usage_stats(self, **kwargs):
+        stats = BoxScoreUsageV2(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
+
+    def get_playertrack_stats(self, **kwargs):
+        stats = BoxScorePlayerTrackV2(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
+
+    def get_scoring_stats(self, **kwargs):
+        stats = BoxScoreScoringV2(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
+
+    def get_matchup_stats(self, **kwargs):
+        stats = BoxScoreMatchups(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
+
+    def get_defensive_stats(self, **kwargs):
+        stats = BoxScoreDefensive(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
+
+    def get_misc_stats(self, **kwargs):
+        stats = BoxScoreMiscV2(self.game_id, **kwargs).get_data_frames()[0]
+        return stats
