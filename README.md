@@ -1,7 +1,7 @@
 # nba_stats
 An advanced NBA stats and analysis platform
 
-Goals
-=====
-- Giving up-to-date advanced analytics.
-- Giving predictions for matches.
+## Goals:
+- Making it intuitive to fetch NBA data.
+- Creating up-to-date advanced analytics.
+- Giving predictions for upcoming matches.

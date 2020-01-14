@@ -1,3 +1,6 @@
+"""
+This module contains a set of helping functions to be used in other modules.
+"""
 import logging
 
 
