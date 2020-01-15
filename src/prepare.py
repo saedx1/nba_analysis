@@ -6,3 +6,7 @@ import helpers
 import data
 
 LOGGER = helpers.get_logger()
+
+
+def generate_feature_dataframe():
+    pass
