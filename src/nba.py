@@ -55,7 +55,7 @@ def get_teams() -> pd.DataFrame:
     """
     filename = "nba_teams.parquet"
     nba_teams = get_dataframe(filename)
-    if not nba_teams:
+    if nba_teams is None:
         nba_teams = teams.get_teams()
         nba_teams = {i["abbreviation"]: i for i in nba_teams}
         nba_teams = pd.DataFrame(nba_teams).T
@@ -64,17 +64,20 @@ def get_teams() -> pd.DataFrame:
     return nba_teams
 
 
-def get_players() -> pd.DataFrame:
+def get_players(is_active: bool = False) -> pd.DataFrame:
     """
     Get nba players in a dataframe.
     """
     filename = "nba_players.parquet"
     nba_players = get_dataframe(filename)
-    if not nba_players:
+    if nba_players is None:
         nba_players = players.get_players()
         nba_players = {i["full_name"]: i for i in nba_players}
         nba_players = pd.DataFrame(nba_players).T
         save_dataframe(nba_players, filename)
+
+    if is_active:
+        nba_players = nba_players[nba_players["is_active"]]
 
     return nba_players
 
@@ -88,7 +91,7 @@ def get_season(
     filename = f"{team_id}_{season}.parquet"
     if not invalidate:
         team_season = get_dataframe(filename)
-        if not team_season:
+        if team_season is None:
             invalidate = True
 
     if invalidate:
@@ -120,6 +123,12 @@ class NBATeam:
 
     CURRENT_SEASON = "2019-20"
 
+    @staticmethod
+    def get_teams_list():
+        nba_teams = get_teams()
+        teams_list = [NBATeam(row.full_name, row.id) for _, row in nba_teams.iterrows()]
+        return teams_list
+
     def __init__(self, name: str, team_id: str):
         self._name = name
         self._team_id = team_id
@@ -142,11 +151,14 @@ class NBATeam:
         self._players = player_list
 
     def get_season(
-        self, season: str = NBATeam.CURRENT_SEASON, invalidate: bool = False, **kwargs
+        self, season: str = None, invalidate: bool = False, **kwargs
     ) -> pd.DataFrame:
         """
         Gets team's matches for a whole season.
         """
+        if season is None:
+            season = NBATeam.CURRENT_SEASON
+
         return get_season(
             team_id=self.team_id, season=season, invalidate=invalidate, **kwargs
         )
@@ -155,37 +167,49 @@ class NBATeam:
         """
         Get's last n games for a team in this season.
         """
-        return self.get_season(invalidate=True, **kwargs).iloc[-last_n_games:]
+        return self.get_season(invalidate=True, **kwargs).iloc[:last_n_games]
 
     def get_shots(
-        self, last_n_games: int = 0, season: str = NBATeam.CURRENT_SEASON, **kwargs
+        self, last_n_games: int = 0, season: str = None, **kwargs
     ) -> pd.DataFrame:
         """
         Gets detailed team shots over the course of a season or last n games.
         """
+        if season is None:
+            season = NBATeam.CURRENT_SEASON
+
         return get_shots(
             team_id=self.team_id, last_n_games=last_n_games, season=season, **kwargs
         )
 
     def get_passes(
-        self, last_n_games: int = 0, season: str = NBATeam.CURRENT_SEASON, **kwargs
+        self, last_n_games: int = 0, season: str = None, **kwargs
     ) -> pd.DataFrame:
         """
         Gets detailed team passes per player over the course of a season or last n games.
         """
+        if season is None:
+            season = NBATeam.CURRENT_SEASON
+
         return get_passes(
             team_id=self.team_id, last_n_games=last_n_games, season=season, **kwargs
         )
 
     def get_rebounds(
-        self, last_n_games: int = 0, season: str = NBATeam.CURRENT_SEASON, **kwargs
+        self, last_n_games: int = 0, season: str = None, **kwargs
     ) -> pd.DataFrame:
         """
         Gets detailed team rebounds over the course of a season or last n games.
         """
+        if season is None:
+            season = NBATeam.CURRENT_SEASON
+
         return get_rebounds(
             team_id=self.team_id, last_n_games=last_n_games, season=season, **kwargs
         )
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}_id={self.team_id}_name={self.name}>"
 
 
 class NBAPlayer:
@@ -193,10 +217,17 @@ class NBAPlayer:
     A class that represents an NBA player
     """
 
-    def __init__(self, name: str, player_id: str, team: NBATeam):
+    @staticmethod
+    def get_players_list(is_active: bool = False):
+        nba_players = get_players(is_active)
+        players_list = [
+            NBAPlayer(row.full_name, row.id) for _, row in nba_players.iterrows()
+        ]
+        return players_list
+
+    def __init__(self, name: str, player_id: str):
         self._name = name
         self._player_id = player_id
-        self._team = team
 
     @property
     def name(self) -> str:
@@ -205,10 +236,6 @@ class NBAPlayer:
     @property
     def player_id(self) -> str:
         return self._player_id
-
-    @property
-    def team(self) -> NBATeam:
-        return self._team
 
     def get_careet_stats(
         self, season_list: List[str] = None, team_id_list: List[str] = None, **kwargs
@@ -223,6 +250,9 @@ class NBAPlayer:
             career = career[career["TEAM_ID"].astype("str").isin(team_id_list)]
 
         return career
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}_id={self.player_id}_name={self.name}>"
 
 
 class NBAGame:
