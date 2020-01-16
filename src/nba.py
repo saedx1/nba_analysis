@@ -4,7 +4,8 @@ It either fetches them from the nba_api or the local storage.
 """
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Dict
+from functools import lru_cache
 
 import pandas as pd
 from nba_api.stats.static import teams, players
@@ -126,7 +127,10 @@ class NBATeam:
     @staticmethod
     def get_teams_list():
         nba_teams = get_teams()
-        teams_list = [NBATeam(row.full_name, row.id) for _, row in nba_teams.iterrows()]
+        teams_list = {
+            row.abbreviation: NBATeam(row.full_name, row.id)
+            for _, row in nba_teams.iterrows()
+        }
         return teams_list
 
     def __init__(self, name: str, team_id: str):
@@ -163,11 +167,17 @@ class NBATeam:
             team_id=self.team_id, season=season, invalidate=invalidate, **kwargs
         )
 
-    def get_last_matches(self, last_n_games: int, **kwargs) -> pd.DataFrame:
+    @lru_cache(maxsize=128)
+    def get_last_matches(self, last_n_games: int = None, **kwargs) -> pd.DataFrame:
         """
         Get's last n games for a team in this season.
         """
-        return self.get_season(invalidate=True, **kwargs).iloc[:last_n_games]
+
+        season = self.get_season(invalidate=True, **kwargs)
+        if last_n_games:
+            season = season.iloc[:last_n_games]
+
+        return season
 
     def get_shots(
         self, last_n_games: int = 0, season: str = None, **kwargs
@@ -220,9 +230,11 @@ class NBAPlayer:
     @staticmethod
     def get_players_list(is_active: bool = False):
         nba_players = get_players(is_active)
-        players_list = [
-            NBAPlayer(row.full_name, row.id) for _, row in nba_players.iterrows()
-        ]
+        players_list = {
+            row.full_name: NBAPlayer(row.full_name, row.id)
+            for _, row in nba_players.iterrows()
+        }
+
         return players_list
 
     def __init__(self, name: str, player_id: str):

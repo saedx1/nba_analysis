@@ -1,6 +1,8 @@
 import sklearn.metrics as sk_metrics
-from keras.layers import Input, Dense, Dropout, GRU, concatenate, Model
-from learner import MatchModel
+from keras.layers import Input, Dense, Dropout, GRU, concatenate
+from keras.models import Model
+
+from .learner import MatchModel
 
 
 class NeuralNetModel(MatchModel):
