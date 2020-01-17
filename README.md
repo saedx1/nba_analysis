@@ -1,4 +1,4 @@
-# NBA Stats Platform
+# NBA Analysis Platform
 
 ### Goals:
 - Making it intuitive to fetch NBA data.

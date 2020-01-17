@@ -26,16 +26,12 @@ from nba_api.stats.endpoints import (
     BoxScoreMiscV2,
 )
 
-DATA_DIR = Path(
-    os.environ["NBA_DATA_DIR"] if "NBA_DATA_DIR" in os.environ.keys() else "nba_data"
-)
-
 
 def get_dataframe(filename: str) -> pd.DataFrame:
     """
     Checks if a file of the dataframe exists and returns it.
     """
-    path = Path(DATA_DIR / filename)
+    path = Path(filename)
     if path.exists():
         return pd.read_parquet(path)
 
@@ -46,36 +42,30 @@ def save_dataframe(dataframe: pd.DataFrame, filename: str) -> None:
     """
     Stores a dataframe in a parquet file.
     """
-    path = Path(DATA_DIR / filename)
+    path = Path(filename)
     dataframe.to_parquet(path, engine="pyarrow", version="2.0", compression="zstd")
 
 
+@lru_cache(maxsize=None)
 def get_teams() -> pd.DataFrame:
     """
     Get nba teams in a dataframe.
     """
-    filename = "nba_teams.parquet"
-    nba_teams = get_dataframe(filename)
-    if nba_teams is None:
-        nba_teams = teams.get_teams()
-        nba_teams = {i["abbreviation"]: i for i in nba_teams}
-        nba_teams = pd.DataFrame(nba_teams).T
-        save_dataframe(nba_teams, "nba_teams.parquet")
+    nba_teams = teams.get_teams()
+    nba_teams = {i["abbreviation"]: i for i in nba_teams}
+    nba_teams = pd.DataFrame(nba_teams).T
 
     return nba_teams
 
 
+@lru_cache(maxsize=None)
 def get_players(is_active: bool = False) -> pd.DataFrame:
     """
     Get nba players in a dataframe.
     """
-    filename = "nba_players.parquet"
-    nba_players = get_dataframe(filename)
-    if nba_players is None:
-        nba_players = players.get_players()
-        nba_players = {i["full_name"]: i for i in nba_players}
-        nba_players = pd.DataFrame(nba_players).T
-        save_dataframe(nba_players, filename)
+    nba_players = players.get_players()
+    nba_players = {i["full_name"]: i for i in nba_players}
+    nba_players = pd.DataFrame(nba_players).T
 
     if is_active:
         nba_players = nba_players[nba_players["is_active"]]
@@ -83,22 +73,11 @@ def get_players(is_active: bool = False) -> pd.DataFrame:
     return nba_players
 
 
-def get_season(
-    team_id: str, season: str, invalidate: bool = False, **kwargs
-) -> pd.DataFrame:
+def get_season(team_id: str, season: str, **kwargs) -> pd.DataFrame:
     """
     Get nba season for an nba team.
     """
-    filename = f"{team_id}_{season}.parquet"
-    if not invalidate:
-        team_season = get_dataframe(filename)
-        if team_season is None:
-            invalidate = True
-
-    if invalidate:
-        team_season = TeamGameLog(team_id, season, **kwargs).get_data_frames()[0]
-        save_dataframe(team_season, filename)
-
+    team_season = TeamGameLog(team_id, season, **kwargs).get_data_frames()[0]
     return team_season
 
 
@@ -154,18 +133,14 @@ class NBATeam:
     def set_players(self, player_list: list):
         self._players = player_list
 
-    def get_season(
-        self, season: str = None, invalidate: bool = False, **kwargs
-    ) -> pd.DataFrame:
+    def get_season(self, season: str = None, **kwargs) -> pd.DataFrame:
         """
         Gets team's matches for a whole season.
         """
         if season is None:
             season = NBATeam.CURRENT_SEASON
 
-        return get_season(
-            team_id=self.team_id, season=season, invalidate=invalidate, **kwargs
-        )
+        return get_season(team_id=self.team_id, season=season, **kwargs)
 
     @lru_cache(maxsize=128)
     def get_last_matches(self, last_n_games: int = None, **kwargs) -> pd.DataFrame:
@@ -173,7 +148,7 @@ class NBATeam:
         Get's last n games for a team in this season.
         """
 
-        season = self.get_season(invalidate=True, **kwargs)
+        season = self.get_season(**kwargs)
         if last_n_games:
             season = season.iloc[:last_n_games]
 
