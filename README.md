@@ -30,31 +30,8 @@ jh = players['James Harden']
 
 ```python
 jh_shots = jh.get_shot_details(made_miss=False)
-missed = jh_shots[jh_shots.SHOT_MADE_FLAG == 0]
 made = jh_shots[jh_shots.SHOT_MADE_FLAG == 1]
 ```
-
-### Plots density of Field Goal Attemps per Location
-
-
-```python
-ax = plot_hex_shots(jh_shots.LOC_X, jh_shots.LOC_Y)
-```
-
-
-![png](https://user-images.githubusercontent.com/34514167/72778569-518e8400-3be7-11ea-855a-a07ed3db0f65.png)
-
-
-### Plots density of Field Goal Makes per Location
-
-
-```python
-ax = plot_hex_shots(made.LOC_X, made.LOC_Y)
-```
-
-
-![png](https://user-images.githubusercontent.com/34514167/72778596-63702700-3be7-11ea-921f-413097fdde5b.png)
-
 
 ### Plots density of Field Goal Misses per Location
 
