@@ -2,8 +2,7 @@ from pathlib import Path
 import click
 import pandas as pd
 
-import helpers
-import nba
+from nba_analysis import helpers
 
 LOGGER = helpers.get_logger()
 
