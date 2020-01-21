@@ -2,9 +2,13 @@
 A module that contains functions to perform plots.
 """
 import numpy as np
+import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Rectangle, Arc
 from matplotlib.colors import LinearSegmentedColormap
+
+matplotlib.rcParams["font.size"] = 15
 
 COLOR_LIST = [
     [0.14509804, 0.27843137, 0.46666667],
@@ -136,13 +140,7 @@ def draw_court(ax=None, color="black", lw=2, outer_lines=False):
 
 
 def plot_scatter_shots(
-    made_x,
-    made_y,
-    missed_x=None,
-    missed_y=None,
-    ax=None,
-    figure_size=(11, 11),
-    **ax_kwargs
+    made_x, made_y, missed_x=None, missed_y=None, ax=None, **ax_kwargs
 ):
     """
     Credit to Savvas Tjortjoglou:
@@ -150,6 +148,7 @@ def plot_scatter_shots(
     """
     if ax is None:
         ax = plt.gca()
+        ax.figure.set_size_inches((11, 11))
 
     def_kwargs = dict(
         marker0="o", color0="green", s0=100, marker1="x", color1="red", s1=100
@@ -170,19 +169,19 @@ def plot_scatter_shots(
 
     draw_court(ax)
 
-    ax.figure.set_size_inches(figure_size)
     ax.set_facecolor((0.93, 0.93, 0.93))
 
     return ax
 
 
-def plot_hex_shots(x, y, ax=None, figure_size=(13.8, 11), **ax_kwargs):
+def plot_hex_shots(x, y, ax=None, **ax_kwargs):
     """
     Credit to Savvas Tjortjoglou:
     http://savvastjortjoglou.com/nba-shot-sharts.html
     """
     if ax is None:
         ax = plt.gca()
+        ax.figure.set_size_inches((13.8, 11))
 
     # 4 Extreme points are added to make sure that
     # the hexagons are ALWAYS the same size
@@ -197,7 +196,85 @@ def plot_hex_shots(x, y, ax=None, figure_size=(13.8, 11), **ax_kwargs):
 
     draw_court(ax)
 
-    ax.figure.set_size_inches(figure_size)
     ax.set_facecolor((0.14509804, 0.27843137, 0.46666667))
+
+    return ax
+
+
+from scipy.interpolate import make_interp_spline
+
+
+def _smooth_it(x, y):
+    x = np.asanyarray(x)
+    y = np.asanyarray(y)
+
+    xnew = np.linspace(x.min(), x.max(), 300)
+
+    spl = make_interp_spline(x, y, k=3)  # type: BSpline
+    ynew = spl(xnew)
+
+    return xnew, ynew
+
+
+def plot_fgp_range_curve(distances, made_miss, ax=None, **kwargs):
+    """
+    Credit to Savvas Tjortjoglou:
+    http://savvastjortjoglou.com/nba-shot-sharts.html
+    """
+    if ax is None:
+        ax = plt.gca()
+        ax.figure.set_size_inches((11, 11))
+
+    # 4 Extreme points are added to make sure that
+    # the hexagons are ALWAYS the same size
+    temp = pd.DataFrame(dict(distances=distances, made_miss=made_miss))
+    temp = temp.merge(
+        pd.DataFrame({"distances": np.arange(0, 31)}), on="distances", how="right"
+    ).fillna(0)
+    res = (
+        temp.groupby("distances")
+        .agg(fgp=("made_miss", np.average), error=("made_miss", np.sum))
+        .fillna(0)
+        .values
+    )
+
+    x = np.arange(0, 31)
+
+    averages = np.append(res[:30, 0], np.sum(res[30:, 0]))
+
+    error1 = np.append(res[:30, 1], np.sum(res[30:, 1])) / np.sum(res[:, 1])
+    error2 = averages - error1
+    error1 = averages + error1
+
+    x, averages = _smooth_it(x, averages)
+
+    _, error1 = _smooth_it(np.arange(0, 31), error1)
+    _, error2 = _smooth_it(np.arange(0, 31), error2)
+
+    def_kwargs = dict()
+    def_kwargs.update(kwargs)
+
+    # Plot the average at each distance
+    ax.plot(x, averages, **def_kwargs)
+
+    # Fill the confidence area based on frequency
+    ax.fill_between(x, error1, error2, color="orange")
+
+    # Highlight the overall average FG%
+    overall_avg = temp.made_miss.mean()
+    ax.hlines(overall_avg, 0, 30, linestyles="--")
+    ax.text(30.5, overall_avg - 0.005, f"{overall_avg*100:.0f}% FGM")
+
+    ax.set_xlabel("Feet from Basket")
+
+    yticks = np.arange(0, 1.1, 0.1)
+    ax.set_yticks(yticks)
+    ax.set_yticklabels([f"{i*100:.0f}%" for i in yticks])
+
+    ax.set_xlim((0, 30))
+    ax.set_ylim((0, 1))
+
+    ax.set_facecolor((0.93, 0.93, 0.93))
+    ax.grid(True, linestyle="--")
 
     return ax
